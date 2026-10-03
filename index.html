@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Painel de Corridas · Strava</title>
+<style>
+  :root {
+    --bg: #f6f6f8;
+    --surface: #ffffff;
+    --tile: #f4f4f7;
+    --ink: #1f1f23;
+    --ink-2: #4a4a55;
+    --muted: #6b6b76;
+    --line: #e4e4ea;
+    --grid: #ececf0;
+    --accent: #fc4c02;
+    --accent-soft: rgba(252, 76, 2, .55);
+    --meta: #a1a1aa;
+    --track: #ececf0;
+    --good: #1e8e3e;
+    --bad: #c5221f;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121214; --surface: #1b1b1f; --tile: #222227; --ink: #ededf0; --ink-2: #c9c9d1;
+      --muted: #a0a0aa; --line: #2e2e35; --grid: #2a2a30; --accent: #ff6a2b;
+      --accent-soft: rgba(255, 106, 43, .6); --meta: #7a7a85; --track: #2e2e35;
+      --good: #4cc26a; --bad: #ff6b60; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121214; --surface: #1b1b1f; --tile: #222227; --ink: #ededf0; --ink-2: #c9c9d1;
+    --muted: #a0a0aa; --line: #2e2e35; --grid: #2a2a30; --accent: #ff6a2b;
+    --accent-soft: rgba(255, 106, 43, .6); --meta: #7a7a85; --track: #2e2e35;
+    --good: #4cc26a; --bad: #ff6b60; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  h1 { margin: 0; font-size: 1.9rem; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin-top: 4px; }
+  .theme-btn {
+    background: var(--surface); color: var(--ink-2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 12px; font: inherit; cursor: pointer;
+  }
+
+  h2 {
+    margin: 36px 0 16px; padding-bottom: 6px; border-bottom: 2px solid var(--accent);
+    color: var(--accent); font-size: .95rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+  }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 10px; }
+  .kpi {
+    background: var(--tile); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: 4px; padding: 12px 16px;
+  }
+  .kpi .lbl { font-size: .74rem; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .03em; }
+  .kpi .val { font-size: 1.75rem; font-weight: 700; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+  .kpi .note { font-size: .78rem; color: var(--muted); }
+  .kpi.good .val { color: var(--good); }
+  .kpi.bad .val { color: var(--bad); }
+
+  .progress { margin-top: 20px; }
+  .progress .row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .progress .row b { font-size: .9rem; }
+  .progress .row span { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { height: 22px; background: var(--track); border-radius: 4px; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; }
+
+  .grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; }
+  .grid.even { grid-template-columns: 1fr 1fr; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+  .card h3 { margin: 0 0 10px; font-size: .95rem; font-weight: 600; color: var(--ink-2); text-align: center; }
+  .chart { position: relative; height: 320px; }
+  .grid + .grid { margin-top: 16px; }
+
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th { background: var(--accent); color: #fff; font-weight: 600; padding: 7px 10px; white-space: nowrap; }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
+  tbody tr:nth-child(even) td { background: var(--tile); }
+  tfoot td { font-weight: 700; border-top: 2px solid var(--line); }
+  td.l, th.l { text-align: left; }
+  td.good { color: var(--good); font-weight: 700; }
+  td.bad { color: var(--bad); font-weight: 700; }
+  td.rest { color: var(--muted); }
+  a { color: var(--accent); }
+  .foot-note { color: var(--muted); font-size: .8rem; margin-top: 10px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: .8rem; text-align: center; }
+
+  @media (max-width: 860px) {
+    .grid, .grid.even { grid-template-columns: 1fr; }
+    .chart { height: 270px; }
+    h1 { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Painel de Corridas · Strava</h1>
+      <div class="sub" id="subtitulo"></div>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button">Tema: sistema</button>
+  </header>
+
+  <h2 id="tituloDesafio">Desafio</h2>
+  <div class="kpis" id="kpisDesafio"></div>
+  <div class="progress">
+    <div class="row"><b>Progresso do desafio</b><span id="progressoTxt"></span></div>
+    <div class="bar" role="progressbar" aria-label="Progresso do desafio" id="progressoBar"><div></div></div>
+  </div>
+
+  <h2>Desempenho no período</h2>
+  <div class="kpis" id="kpisDesempenho"></div>
+
+  <h2>Evolução</h2>
+  <div class="grid">
+    <div class="card"><h3>Desafio: km acumulados vs. meta</h3><div class="chart"><canvas id="cAcumulado"></canvas></div></div>
+    <div class="card"><h3>Progresso do desafio</h3><div class="chart"><canvas id="cRosca"></canvas></div></div>
+  </div>
+  <div class="grid even">
+    <div class="card"><h3>Km por dia (dias sem treino = 0)</h3><div class="chart"><canvas id="cDiario"></canvas></div></div>
+    <div class="card"><h3>Pace por treino (min/km · menor = mais rápido)</h3><div class="chart"><canvas id="cPace"></canvas></div></div>
+  </div>
+
+  <h2>Semanas do desafio</h2>
+  <div class="grid even">
+    <div class="card"><h3>Km por semana vs. meta</h3><div class="chart"><canvas id="cSemanas"></canvas></div></div>
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Semana</th><th>Período</th><th>Km</th><th>Meta</th><th>Treinos</th><th>Pace</th></tr></thead>
+          <tbody id="tSemanas"></tbody>
+        </table>
+      </div>
+      <p class="foot-note">▲ verde = semana na meta (a semana em andamento é comparada com a meta proporcional aos dias já passados) · ▼ vermelho = abaixo. Semanas futuras aparecem zeradas.</p>
+    </div>
+  </div>
+
+  <h2>Atividades</h2>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Data</th><th class="l">Dia</th><th>Km</th><th>Tempo</th>
+          <th>Pace</th><th>Vel. média</th><th>Vel. máx.</th><th>Elevação</th><th>kcal</th><th>Conquistas</th><th>PRs</th>
+        </tr></thead>
+        <tbody id="tAtividades"></tbody>
+        <tfoot id="tAtividadesTotal"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <footer id="rodape"></footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+// ---------- dados ----------
+// Para atualizar: acrescente uma linha em ATIVIDADES para cada corrida.
+// Dias sem corrida não precisam ser listados. tempo = tempo em movimento em segundos.
+const DESAFIO = { inicio: "2026-09-15", duracao: 30, meta: 150 };
+const ATIVIDADES = [
+  { data: "2026-09-15", km: 10.03, tempo: 3775, elevacao: 8.2,  kcal: 1135, conquistas: 2,  prs: 1,  vmax: 18.00 },
+  { data: "2026-09-16", km: 10.00, tempo: 4037, elevacao: 8.2,  kcal: 1131, conquistas: 1,  prs: 1,  vmax: 28.51 },
+  { data: "2026-09-17", km: 10.02, tempo: 3394, elevacao: 8.4,  kcal: 1133, conquistas: 9,  prs: 9,  vmax: 39.31 },
+  { data: "2026-09-19", km: 10.04, tempo: 4600, elevacao: 2.2,  kcal: 1136, conquistas: 11, prs: 11, vmax: 35.93 },
+  { data: "2026-09-20", km: 3.03,  tempo: 1049, elevacao: 0,    kcal: 343,  conquistas: 9,  prs: 9,  vmax: 18.94 },
+  { data: "2026-09-24", km: 17.00, tempo: 7717, elevacao: 10.2, kcal: 1923, conquistas: 10, prs: 8,  vmax: 19.80 },
+  { data: "2026-09-28", km: 5.04,  tempo: 2065, elevacao: 0,    kcal: 570,  conquistas: 3,  prs: 2,  vmax: 15.91 },
+  { data: "2026-09-29", km: 10.01, tempo: 3982, elevacao: 8.0,  kcal: 1132, conquistas: 0,  prs: 0,  vmax: 24.09 },
+  { data: "2026-09-30", km: 5.00,  tempo: 2104, elevacao: 5.6,  kcal: 566,  conquistas: 1,  prs: 1,  vmax: 30.89 },
+  { data: "2026-10-02", km: 8.01,  tempo: 2938, elevacao: 8.1,  kcal: 907,  conquistas: 2,  prs: 2,  vmax: 19.87 },
+  { data: "2026-10-03", km: 8.23,  tempo: 3218, elevacao: 8.1,  kcal: 931,  conquistas: 1,  prs: 1,  vmax: 22.82 },
+];
+
+(() => {
+  // ---------- utilidades ----------
+  const DIA = 86400000;
+  const parse = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+  const ddmm = t => { const d = new Date(t); return String(d.getUTCDate()).padStart(2, "0") + "/" + String(d.getUTCMonth() + 1).padStart(2, "0"); };
+  const SEMANA = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+  const num = (n, d = 1) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pace = s => { const r = Math.round(s); return Math.floor(r / 60) + ":" + String(r % 60).padStart(2, "0"); };
+  const duracao = s => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h + "h" + String(m).padStart(2, "0"); };
+  const hms = s => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+  const sum = (a, f) => a.reduce((t, x) => t + f(x), 0);
+
+  // ---------- cálculos (mesmas fórmulas da planilha) ----------
+  const runs = ATIVIDADES.map(a => ({ ...a, t: parse(a.data) })).sort((a, b) => a.t - b.t);
+  const inicio = parse(DESAFIO.inicio);
+  const dur = DESAFIO.duracao, meta = DESAFIO.meta;
+  const fim = inicio + (dur - 1) * DIA;
+  const ref = Math.max(...runs.map(r => r.t));            // data do último dado
+  const primeiro = Math.min(inicio, ...runs.map(r => r.t));
+
+  const kmNoDia = t => sum(runs.filter(r => r.t === t), r => r.km);
+  const dias = []; for (let t = primeiro; t <= ref; t += DIA) dias.push(t);
+  const descansos = dias.filter(t => !runs.some(r => r.t === t)).length;
+
+  const decorridos = Math.min(dur, Math.max(0, (ref - inicio) / DIA + 1));
+  const restantes = dur - decorridos;
+  const percorrido = sum(runs.filter(r => r.t >= inicio && r.t <= fim), r => r.km);
+  const faltam = Math.max(0, meta - percorrido);
+  const pct = percorrido / meta;
+  const necessario = restantes > 0 ? faltam / restantes : 0;
+  const mediaDia = decorridos > 0 ? percorrido / decorridos : 0;
+  const projecao = mediaDia * dur;
+  const saldo = percorrido - meta / dur * decorridos;
+  const status = percorrido >= meta ? ["★ Meta atingida", "good"] : projecao >= meta ? ["✔ No ritmo", "good"] : ["⚠ Abaixo do ritmo", "bad"];
+
+  const kmTotal = sum(runs, r => r.km), tempoTotal = sum(runs, r => r.tempo);
+  const maior = runs.reduce((a, b) => (b.km > a.km ? b : a));
+
+  // ---------- textos e KPIs ----------
+  document.getElementById("subtitulo").textContent =
+    `Atividades de ${ddmm(primeiro)} a ${ddmm(ref)}  ·  dias sem treino incluídos`;
+  document.getElementById("tituloDesafio").textContent =
+    `Desafio ${meta} km em ${dur} dias  ·  ${ddmm(inicio)} a ${ddmm(fim)}`;
+
+  const tile = (lbl, val, note, cls = "") =>
+    `<div class="kpi ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="note">${note}</div></div>`;
+
+  document.getElementById("kpisDesafio").innerHTML = [
+    tile("Meta", `${meta} km`, `em ${dur} dias corridos`),
+    tile("Percorrido", `${num(percorrido)} km`, `${num(pct * 100)}% da meta`),
+    tile("Faltam", `${num(faltam)} km`, `saldo vs. meta linear: ${saldo >= 0 ? "+" : ""}${num(saldo)} km`),
+    tile("Dias restantes", restantes, `dia ${decorridos} de ${dur} · fim em ${ddmm(fim)}`),
+    tile("Necessário por dia", `${num(necessario, 2)} km`, `média atual: ${num(mediaDia, 2)} km/dia`),
+    tile("Projeção ao final", `${num(projecao)} km`, status[0], status[1]),
+  ].join("");
+
+  document.getElementById("progressoTxt").textContent = `${num(percorrido)} de ${meta} km  ·  ${num(pct * 100, 0)}%`;
+  const pb = document.getElementById("progressoBar");
+  pb.firstElementChild.style.width = Math.min(100, pct * 100) + "%";
+  pb.setAttribute("aria-valuenow", Math.round(pct * 100));
+  pb.setAttribute("aria-valuemin", 0); pb.setAttribute("aria-valuemax", 100);
+
+  document.getElementById("kpisDesempenho").innerHTML = [
+    tile("Treinos", runs.length, `${descansos} dias sem treino · freq. ${num(runs.length / dias.length * 100, 0)}%`),
+    tile("Média por treino", `${num(kmTotal / runs.length)} km`, `total: ${num(kmTotal)} km`),
+    tile("Tempo em movimento", duracao(tempoTotal), `${num(sum(runs, r => r.kcal), 0)} kcal gastas`),
+    tile("Pace médio", `${pace(tempoTotal / kmTotal)} /km`, `vel. média ${num(kmTotal / (tempoTotal / 3600))} km/h`),
+    tile("Maior corrida", `${num(maior.km)} km`, `em ${ddmm(maior.t)}`),
+    tile("Recordes (PRs)", sum(runs, r => r.prs), `${sum(runs, r => r.conquistas)} conquistas`),
+  ].join("");
+
+  // ---------- semanas ----------
+  const semanas = [];
+  for (let i = 0; i * 7 < dur; i++) {
+    const ini = inicio + i * 7 * DIA, f = Math.min(ini + 6 * DIA, fim);
+    const daSemana = runs.filter(r => r.t >= ini && r.t <= f);
+    const nDias = (f - ini) / DIA + 1;
+    const km = sum(daSemana, r => r.km), tempo = sum(daSemana, r => r.tempo);
+    const metaSem = meta / dur * nDias;
+    let estado = "";
+    if (ini <= ref) {
+      const diasPassados = Math.min(nDias, (ref - ini) / DIA + 1);
+      estado = km >= meta / dur * diasPassados ? "good" : "bad";
+    }
+    semanas.push({ nome: `Semana ${i + 1}`, ini, f, km, metaSem, treinos: daSemana.length, pace: km > 0 ? tempo / km : null, estado });
+  }
+  document.getElementById("tSemanas").innerHTML = semanas.map(s => `<tr>
+      <td>${s.nome}</td><td>${ddmm(s.ini)} – ${ddmm(s.f)}</td>
+      <td class="${s.estado}">${s.estado === "good" ? "▲ " : s.estado === "bad" ? "▼ " : ""}${num(s.km)}</td>
+      <td>${num(s.metaSem)}</td><td>${s.treinos}</td><td>${s.pace ? pace(s.pace) : "–"}</td></tr>`).join("");
+
+  // ---------- tabela de atividades ----------
+  document.getElementById("tAtividades").innerHTML = dias.map(t => {
+    const dow = SEMANA[new Date(t).getUTCDay()];
+    const r = runs.find(x => x.t === t);
+    if (!r) return `<tr><td>${ddmm(t)}</td><td class="l rest">${dow}</td><td class="rest">0,0</td><td colspan="8" class="rest">Sem treino</td></tr>`;
+    return `<tr><td>${ddmm(t)}</td><td class="l">${dow}</td>
+      <td>${num(r.km, 2)}</td><td>${hms(r.tempo)}</td><td>${pace(r.tempo / r.km)}</td>
+      <td>${num(r.km / (r.tempo / 3600), 2)}</td><td>${num(r.vmax, 2)}</td><td>${num(r.elevacao)} m</td>
+      <td>${num(r.kcal, 0)}</td><td>${r.conquistas}</td><td>${r.prs}</td></tr>`;
+  }).join("");
+  document.getElementById("tAtividadesTotal").innerHTML = `<tr><td colspan="2" class="l">Total · ${runs.length} treinos · ${descansos} sem treino</td>
+    <td>${num(kmTotal, 2)}</td><td>${hms(tempoTotal)}</td><td>${pace(tempoTotal / kmTotal)}</td>
+    <td>${num(kmTotal / (tempoTotal / 3600), 2)}</td><td>${num(Math.max(...runs.map(r => r.vmax)), 2)}</td>
+    <td>${num(sum(runs, r => r.elevacao), 0)} m</td><td>${num(sum(runs, r => r.kcal), 0)}</td>
+    <td>${sum(runs, r => r.conquistas)}</td><td>${sum(runs, r => r.prs)}</td></tr>`;
+
+  document.getElementById("rodape").textContent =
+    `Dados exportados do Strava · atualizado até ${ddmm(ref)} · página estática (HTML + Chart.js)`;
+
+  // ---------- gráficos ----------
+  if (!window.Chart) {
+    document.querySelectorAll(".chart").forEach(el => el.innerHTML = '<p class="foot-note">Não foi possível carregar a biblioteca de gráficos.</p>');
+    return;
+  }
+
+  const diasDesafio = []; for (let i = 0; i < dur; i++) diasDesafio.push(inicio + i * DIA);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  let charts = [];
+
+  // rótulos de valor sobre as barras (só nas séries marcadas com valueLabels)
+  const valueLabels = {
+    id: "valueLabels",
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((ds, i) => {
+        if (!ds.valueLabels || !chart.isDatasetVisible(i)) return;
+        chart.getDatasetMeta(i).data.forEach((bar, j) => {
+          const v = ds.data[j];
+          if (!v) return;
+          ctx.save();
+          ctx.fillStyle = css("--ink-2");
+          ctx.font = "600 11px 'Segoe UI', system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(num(v), bar.x, bar.y - 6);
+          ctx.restore();
+        });
+      });
+    },
+  };
+  // texto central da rosca
+  const centerText = {
+    id: "centerText",
+    afterDraw(chart) {
+      if (chart.config.type !== "doughnut") return;
+      const { ctx, chartArea: a } = chart;
+      const x = (a.left + a.right) / 2, y = (a.top + a.bottom) / 2;
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.fillStyle = css("--ink");
+      ctx.font = "700 30px 'Segoe UI', system-ui, sans-serif";
+      ctx.fillText(num(pct * 100, 0) + "%", x, y + 4);
+      ctx.fillStyle = css("--muted");
+      ctx.font = "12px 'Segoe UI', system-ui, sans-serif";
+      ctx.fillText("concluído", x, y + 24);
+      ctx.restore();
+    },
+  };
+
+  function render() {
+    charts.forEach(c => c.destroy());
+    const C = {
+      ink: css("--ink"), muted: css("--muted"), grid: css("--grid"), accent: css("--accent"),
+      soft: css("--accent-soft"), meta: css("--meta"), track: css("--track"), surface: css("--surface"),
+    };
+    Chart.defaults.font.family = "'Segoe UI', system-ui, -apple-system, Roboto, sans-serif";
+    Chart.defaults.color = C.muted;
+    Chart.defaults.borderColor = C.grid;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.position = "bottom";
+    Chart.defaults.plugins.tooltip.backgroundColor = "rgba(20,20,24,.92)";
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.maintainAspectRatio = false;
+    const noLegend = { legend: { display: false } };
+    const xDates = { grid: { display: false }, ticks: { maxRotation: 90, minRotation: 90, autoSkip: false, font: { size: 10 } } };
+
+    // 1. acumulado vs. meta
+    let acc = 0;
+    const realizado = diasDesafio.map(t => (t <= ref ? (acc += kmNoDia(t)) : null));
+    const linear = diasDesafio.map((_, i) => meta / dur * (i + 1));
+    const ritmo = diasDesafio.map(t => (t >= ref ? percorrido + (t - ref) / DIA * necessario : null));
+    charts.push(new Chart(document.getElementById("cAcumulado"), {
+      type: "line",
+      data: {
+        labels: diasDesafio.map(ddmm),
+        datasets: [
+          { label: "Realizado", data: realizado, borderColor: C.accent, backgroundColor: C.accent, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, tension: 0 },
+          { label: "Meta linear", data: linear, borderColor: C.meta, backgroundColor: C.meta, borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 4 },
+          { label: "Ritmo necessário", data: ritmo, borderColor: C.soft, backgroundColor: C.soft, borderWidth: 2, borderDash: [2, 4], pointRadius: 0, pointHoverRadius: 4 },
+        ],
+      },
+      options: {
+        interaction: { mode: "index", intersect: false },
+        scales: { x: xDates, y: { beginAtZero: true, suggestedMax: meta + 10, ticks: { stepSize: 20, callback: v => v + " km" } } },
+        plugins: { tooltip: { callbacks: { label: c => (c.raw == null ? null : ` ${c.dataset.label}: ${num(c.raw)} km`) } } },
+      },
+    }));
+
+    // 2. rosca
+    charts.push(new Chart(document.getElementById("cRosca"), {
+      type: "doughnut",
+      data: {
+        labels: ["Percorrido", "Restante"],
+        datasets: [{ data: [Math.min(percorrido, meta), faltam], backgroundColor: [C.accent, C.track], borderColor: C.surface, borderWidth: 2, hoverOffset: 4 }],
+      },
+      options: {
+        cutout: "62%",
+        plugins: { tooltip: { callbacks: { label: c => ` ${c.label}: ${num(c.raw)} km (${num(c.raw / meta * 100, 0)}%)` } } },
+      },
+      plugins: [centerText],
+    }));
+
+    // 3. km por dia
+    charts.push(new Chart(document.getElementById("cDiario"), {
+      type: "bar",
+      data: {
+        labels: dias.map(ddmm),
+        datasets: [{ label: "Km", data: dias.map(kmNoDia), backgroundColor: C.accent, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "start", categoryPercentage: .8, barPercentage: .9, valueLabels: true }],
+      },
+      options: {
+        layout: { padding: { top: 18 } },
+        scales: { x: xDates, y: { beginAtZero: true, ticks: { stepSize: 2 } } },
+        plugins: { ...noLegend, tooltip: { callbacks: { label: c => (c.raw ? ` ${num(c.raw, 2)} km` : " Sem treino") } } },
+      },
+      plugins: [valueLabels],
+    }));
+
+    // 4. pace por treino
+    charts.push(new Chart(document.getElementById("cPace"), {
+      type: "line",
+      data: {
+        labels: dias.map(ddmm),
+        datasets: [{
+          label: "Pace", data: dias.map(t => { const r = runs.find(x => x.t === t); return r ? r.tempo / r.km : null; }),
+          borderColor: C.accent, backgroundColor: C.accent, borderWidth: 2, pointRadius: 4.5, pointHoverRadius: 7,
+          pointBorderColor: C.surface, pointBorderWidth: 1.5, spanGaps: true,
+        }],
+      },
+      options: {
+        interaction: { mode: "nearest", intersect: false, axis: "x" },
+        scales: { x: xDates, y: { suggestedMin: 300, suggestedMax: 480, ticks: { stepSize: 30, callback: v => pace(v) } } },
+        plugins: {
+          ...noLegend,
+          tooltip: { filter: c => c.raw != null, callbacks: { label: c => { const r = runs.find(x => ddmm(x.t) === c.label); return ` ${pace(c.raw)} /km · ${num(r.km, 2)} km`; } } },
+        },
+      },
+    }));
+
+    // 5. semanas vs. meta
+    charts.push(new Chart(document.getElementById("cSemanas"), {
+      type: "bar",
+      data: {
+        labels: semanas.map(s => s.nome),
+        datasets: [
+          { label: "Realizado", data: semanas.map(s => s.km), backgroundColor: C.accent, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "start", valueLabels: true },
+          { label: "Meta", data: semanas.map(s => s.metaSem), backgroundColor: C.meta, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "start" },
+        ],
+      },
+      options: {
+        interaction: { mode: "index", intersect: false },
+        layout: { padding: { top: 18 } },
+        datasets: { bar: { categoryPercentage: .75, barPercentage: .92 } },
+        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grace: "10%", ticks: { stepSize: 5, callback: v => num(v) } } },
+        plugins: { tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${num(c.raw)} km` } } },
+      },
+      plugins: [valueLabels],
+    }));
+  }
+
+  // ---------- tema ----------
+  const root = document.documentElement, btn = document.getElementById("themeBtn");
+  const temas = ["sistema", "claro", "escuro"];
+  let tema = "sistema";
+  try { tema = localStorage.getItem("tema") || "sistema"; } catch (e) {}
+  function aplicaTema() {
+    if (tema === "claro") root.setAttribute("data-theme", "light");
+    else if (tema === "escuro") root.setAttribute("data-theme", "dark");
+    else root.removeAttribute("data-theme");
+    btn.textContent = "Tema: " + tema;
+    render();
+  }
+  btn.addEventListener("click", () => {
+    tema = temas[(temas.indexOf(tema) + 1) % temas.length];
+    try { localStorage.setItem("tema", tema); } catch (e) {}
+    aplicaTema();
+  });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (tema === "sistema") render(); });
+  aplicaTema();
+})();
+</script>
+</body>
+</html>
