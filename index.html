@@ -168,7 +168,8 @@
 <script>
 // ---------- dados ----------
 // Para atualizar: acrescente uma linha em ATIVIDADES para cada corrida.
-// Dias sem corrida não precisam ser listados. tempo = tempo em movimento em segundos.
+// Dias sem corrida não precisam ser listados: o painel conta os dias até a data de hoje.
+// tempo = tempo em movimento em segundos.
 const DESAFIO = { inicio: "2026-09-15", duracao: 30, meta: 150 };
 const ATIVIDADES = [
   { data: "2026-09-15", km: 10.03, tempo: 3775, elevacao: 8.2,  kcal: 1135, conquistas: 2,  prs: 1,  vmax: 18.00 },
@@ -202,7 +203,10 @@ const ATIVIDADES = [
   const inicio = parse(DESAFIO.inicio);
   const dur = DESAFIO.duracao, meta = DESAFIO.meta;
   const fim = inicio + (dur - 1) * DIA;
-  const ref = Math.max(...runs.map(r => r.t));            // data do último dado
+  const ultimo = Math.max(...runs.map(r => r.t));          // data da última corrida
+  const agora = new Date();
+  const hoje = Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  const ref = Math.max(ultimo, Math.min(hoje, fim));      // conta os dias até hoje (limitado ao fim do desafio)
   const primeiro = Math.min(inicio, ...runs.map(r => r.t));
 
   const kmNoDia = t => sum(runs.filter(r => r.t === t), r => r.km);
@@ -293,7 +297,7 @@ const ATIVIDADES = [
     <td>${sum(runs, r => r.conquistas)}</td><td>${sum(runs, r => r.prs)}</td></tr>`;
 
   document.getElementById("rodape").textContent =
-    `Dados exportados do Strava · atualizado até ${ddmm(ref)} · página estática (HTML + Chart.js)`;
+    `Dados exportados do Strava · dias contados até ${ddmm(ref)} · última corrida em ${ddmm(ultimo)} · página estática (HTML + Chart.js)`;
 
   // ---------- gráficos ----------
   if (!window.Chart) {
